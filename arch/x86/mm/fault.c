@@ -1242,7 +1242,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	}
 
 	if ((address >> 44) == 0x6) {
-			printk("[LRF-DD] page_fault invoked! address:[%lx]\n", address);
+			//printk("[LRF-DD] page_fault invoked! address:[%lx]\n", address);
 			__request_page(address); 
 			stime = ktime_get(); 
 	}
@@ -1257,7 +1257,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	prefetchw(&mm->mmap_sem);
 
 	if (unlikely(kmmio_fault(regs, address)))
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1279,14 +1279,14 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	if (unlikely(fault_in_kernel_space(address))) {
 		if (!(error_code & (PF_RSVD | PF_USER | PF_PROT))) {
 			if (vmalloc_fault(address) >= 0)
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
 #endif
 
 			if (kmemcheck_fault(regs, address, error_code))
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1295,7 +1295,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 		/* Can handle a stale RO->RW TLB: */
 		if (spurious_fault(error_code, address))
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1303,7 +1303,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 		/* kprobes don't want to hook the spurious faults: */
 		if (kprobes_fault(regs))
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1314,7 +1314,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 		 */
 		bad_area_nosemaphore(regs, error_code, address, NULL);
 
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1323,7 +1323,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 	/* kprobes don't want to hook the spurious faults: */
 	if (unlikely(kprobes_fault(regs)))
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1334,7 +1334,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 	if (unlikely(smap_violation(error_code, regs))) {
 		bad_area_nosemaphore(regs, error_code, address, NULL);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1347,7 +1347,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 */
 	if (unlikely(faulthandler_disabled() || !mm)) {
 		bad_area_nosemaphore(regs, error_code, address, NULL);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1397,7 +1397,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 		if ((error_code & PF_USER) == 0 &&
 		    !search_exception_tables(regs->ip)) {
 			bad_area_nosemaphore(regs, error_code, address, NULL);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1417,7 +1417,7 @@ retry:
 	vma = find_vma(mm, address);
 	if (unlikely(!vma)) {
 		bad_area(regs, error_code, address);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1427,7 +1427,7 @@ retry:
 		goto good_area;
 	if (unlikely(!(vma->vm_flags & VM_GROWSDOWN))) {
 		bad_area(regs, error_code, address);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1442,7 +1442,7 @@ retry:
 		 */
 		if (unlikely(address + 65536 + 32 * sizeof(unsigned long) < regs->sp)) {
 			bad_area(regs, error_code, address);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1451,7 +1451,7 @@ retry:
 	}
 	if (unlikely(expand_stack(vma, address))) {
 		bad_area(regs, error_code, address);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1465,7 +1465,7 @@ retry:
 good_area:
 	if (unlikely(access_error(error_code, vma))) {
 		bad_area_access_error(regs, error_code, address, vma);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1497,7 +1497,7 @@ good_area:
 
 		/* User mode? Just return to handle the fatal exception */
 		if (flags & FAULT_FLAG_USER)
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1505,7 +1505,7 @@ good_area:
 
 		/* Not returning to user mode? Handle exceptions or die: */
 		no_context(regs, error_code, address, SIGBUS, BUS_ADRERR);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1515,7 +1515,7 @@ good_area:
 	up_read(&mm->mmap_sem);
 	if (unlikely(fault & VM_FAULT_ERROR)) {
 		mm_fault_error(regs, error_code, address, vma, fault);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 			goto end;
 #else
 		return;
@@ -1535,7 +1535,7 @@ good_area:
 	}
 
 	check_v8086_mode(regs, address, tsk);
-#ifdef CUCKOO_MIGRTION
+#ifdef CUCKOO_MIGRATION
 end:
 	    if ((address >> 44) == 0x6) {
 				printk("[LRF-DD] page_fault invoked! address:[%lx]\n", address);

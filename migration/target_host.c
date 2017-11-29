@@ -8,14 +8,17 @@
 #include <linux/socket.h>
 #include <linux/slab.h>
 
-//#define NETWORK_PAGE_FAULT
+#define NETWORK_PAGE_FAULT
 
 #define MODULE_NAME        "cuckoo-receiver"
 #define MIG_PORT        11603
-#define ADDRESS_LEN        8
-#define PAGE_LEN        4096
+#define ADDRESS_LEN        16
+#define PAGE_LEN		 4096
 
 static int sock_connected = 0;
+EXPORT_SYMBOL_GPL(sock_connected);
+static int npf_on = 1;
+EXPORT_SYMBOL_GPL(npf_on);
 
 static struct sockaddr_in serv_addr;
 static struct socket *connect_sock = NULL;
@@ -25,6 +28,7 @@ static char page_content[PAGE_LEN+1];
 
 int send_reply(struct socket *sock, char *buf);
 int read_response(struct socket *sock, char *str);
+int __try_connect(void);
 
 static uint32_t create_address(uint8_t a1,uint8_t a2,uint8_t a3,uint8_t a4)
 {
@@ -43,17 +47,20 @@ void request_page(unsigned long address, char* content)
 {
 
 		if(!sock_connected) {
+			if(__try_connect()<0){
+				printk("[CUCKOO-RECEIVER] request page failed.\n");
 				return;
+			}
 		}    
 
 		memset(page_address, 0, ADDRESS_LEN);
-		memset(page_content, 0, PAGE_LEN);
-		snprintf(page_address, PAGE_LEN+1, "%lx", address);
+		snprintf(page_address, ADDRESS_LEN, "%lx", address);
 		page_address[ADDRESS_LEN] = '\0';
 
 		printk("[CUCKOO-RECEIVER] page addr:%s.\n", page_address);
 
 		send_reply(connect_sock, page_address);
+		memset(page_content, 0, PAGE_LEN);
 		read_response(connect_sock, page_content);
 
 		page_content[PAGE_LEN] = '\0';
@@ -140,33 +147,40 @@ int send_reply(struct socket *sock, char *buf)
 
 }
 
+int __try_connect(void)
+{
+	int r = -1;
+	r = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &connect_sock);
+	if (r < 0) {
+		printk("[CUCKOO-RECEIVER]: connect sock create failed.\n");
+		return -1;
+	}
+
+	memset(&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(MIG_PORT);
+	serv_addr.sin_addr.s_addr = htonl(create_address(192, 168, 10, 23));
+
+	r = connect_sock->ops->connect(connect_sock,
+			(struct sockaddr *) &serv_addr,
+			sizeof(serv_addr), O_RDWR);
+
+	if (r==0) {
+		printk("[CUCKOO-RECEIVER]: connect to server.\n");
+	} else {
+		printk("[CUCKOO-RECEIVER]: connect failed.\n");
+		return -1;
+	}
+
+	sock_connected = 1;	
+	return 0;
+}
+EXPORT_SYMBOL_GPL(__try_connect);
+
 static int __init mig_receiver_init(void)
 {
-		int r = -1;
 		printk("[CUCKOO-RECEIVER]: module init.\n");
-
-		r = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &connect_sock);
-		if (r < 0) {
-				printk("[CUCKOO-RECEIVER]: connect sock create failed.\n");
-				return -1;
-		}
-
-		memset(&serv_addr, 0, sizeof(serv_addr));
-		serv_addr.sin_family = AF_INET;
-		serv_addr.sin_port = htons(MIG_PORT);
-		serv_addr.sin_addr.s_addr = htonl(create_address(192, 168, 12, 96));
-
-		r = connect_sock->ops->connect(connect_sock,
-						(struct sockaddr *) &serv_addr,
-						sizeof(serv_addr), O_RDWR);
-
-		if (r==0) {
-				printk("[CUCKOO-RECEIVER]: connect to server.\n");
-		} else {
-				printk("[CUCKOO-RECEIVER]: connect failed.\n");
-		}
-
-		sock_connected = 1;
+		sock_connected = 0;
 
 		//request_page(0x60000000, page_content);
 		return 0;
@@ -194,7 +208,10 @@ EXPORT_SYMBOL_GPL(__request_page);
 #else
 void __request_page(unsigned long address)
 {
-		request(address, page_content);
+		if (npf_on) {
+			request_page(address, page_content);
+		}
+
 		printk("[LRF] migration NETWORK request page: %lx\n", address);
 		return;
 }
