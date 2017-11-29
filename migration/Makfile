@@ -1,4 +1,4 @@
 #
 # Makefile for the linux cuckoo migration.
 #
-obj-y := migration_receiver.o migration_sender.o
+obj-y := target_host.o
