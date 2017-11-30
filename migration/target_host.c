@@ -13,8 +13,8 @@
 #define MODULE_NAME        "cuckoo-receiver"
 #define MIG_PORT        11603
 #define ADDRESS_LEN        16
-//#define PAGE_LEN		 4096
-#define PAGE_LEN		 2097152
+#define PAGE_LEN		 4096
+//#define PAGE_LEN		 2097152
 
 static int sock_connected = 0;
 EXPORT_SYMBOL_GPL(sock_connected);
@@ -96,11 +96,11 @@ int read_response(struct socket *sock, char *str)
 		msg.msg_iter     = iter;
 		msg.msg_control  = NULL;
 		msg.msg_controllen = 0;
-		//msg.msg_flags    = 0;
-		msg.msg_flags    = MSG_WAITALL;
+		msg.msg_flags    = 0;
+		//msg.msg_flags    = MSG_WAITALL;
 
 		//for(len=0;len==0;len = sock_recvmsg(sock, &msg, 0));
-		for(len=0;len==0;len = sock_recvmsg(sock, &msg, MSG_WAITALL));
+		len = sock_recvmsg(sock, &msg, MSG_WAITALL);
 
 		set_fs(oldfs);
 
@@ -136,8 +136,8 @@ int send_reply(struct socket *sock, char *buf)
 		//copy_to_iter(buf, length, &(msg.msg_iter));
 		msg.msg_control  = NULL;
 		msg.msg_controllen = 0;
-		//msg.msg_flags    = MSG_DONTWAIT;
-		msg.msg_flags    = MSG_WAITALL;
+		msg.msg_flags    = MSG_DONTWAIT;
+		//msg.msg_flags    = MSG_WAITALL;
 
 		oldmm = get_fs(); set_fs(KERNEL_DS);
 
