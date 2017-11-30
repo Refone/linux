@@ -13,7 +13,8 @@
 #define MODULE_NAME        "cuckoo-receiver"
 #define MIG_PORT        11603
 #define ADDRESS_LEN        16
-#define PAGE_LEN		 4096
+//#define PAGE_LEN		 4096
+#define PAGE_LEN		 2097152
 
 static int sock_connected = 0;
 EXPORT_SYMBOL_GPL(sock_connected);
@@ -57,14 +58,14 @@ void request_page(unsigned long address, char* content)
 		snprintf(page_address, ADDRESS_LEN, "%lx", address);
 		page_address[ADDRESS_LEN] = '\0';
 
-		printk("[CUCKOO-RECEIVER] page addr:%s.\n", page_address);
+		//printk("[CUCKOO-RECEIVER] page addr:%s.\n", page_address);
 
 		send_reply(connect_sock, page_address);
 		memset(page_content, 0, PAGE_LEN);
 		read_response(connect_sock, page_content);
 
 		page_content[PAGE_LEN] = '\0';
-		printk("[CUCKOO-RECEIVER] page content:%s.\n", page_content);
+		//printk("[CUCKOO-RECEIVER] page content:%s.\n", page_content);
 }
 
 int read_response(struct socket *sock, char *str)
@@ -95,9 +96,11 @@ int read_response(struct socket *sock, char *str)
 		msg.msg_iter     = iter;
 		msg.msg_control  = NULL;
 		msg.msg_controllen = 0;
-		msg.msg_flags    = 0;
+		//msg.msg_flags    = 0;
+		msg.msg_flags    = MSG_WAITALL;
 
-		len = sock_recvmsg(sock, &msg, 0);
+		//for(len=0;len==0;len = sock_recvmsg(sock, &msg, 0));
+		for(len=0;len==0;len = sock_recvmsg(sock, &msg, MSG_WAITALL));
 
 		set_fs(oldfs);
 
@@ -133,7 +136,8 @@ int send_reply(struct socket *sock, char *buf)
 		//copy_to_iter(buf, length, &(msg.msg_iter));
 		msg.msg_control  = NULL;
 		msg.msg_controllen = 0;
-		msg.msg_flags    = MSG_DONTWAIT;
+		//msg.msg_flags    = MSG_DONTWAIT;
+		msg.msg_flags    = MSG_WAITALL;
 
 		oldmm = get_fs(); set_fs(KERNEL_DS);
 
@@ -141,7 +145,7 @@ int send_reply(struct socket *sock, char *buf)
 
 		set_fs(oldmm);
 
-		printk("[CUCKOO-RECEIVER]: %d bytes sent.\n", len);
+		//printk("[CUCKOO-RECEIVER]: %d bytes sent.\n", len);
 
 		return len;
 
@@ -159,7 +163,7 @@ int __try_connect(void)
 	memset(&serv_addr, 0, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(MIG_PORT);
-	serv_addr.sin_addr.s_addr = htonl(create_address(192, 168, 10, 23));
+	serv_addr.sin_addr.s_addr = htonl(create_address(192, 168, 10, 70));
 
 	r = connect_sock->ops->connect(connect_sock,
 			(struct sockaddr *) &serv_addr,
@@ -210,9 +214,11 @@ void __request_page(unsigned long address)
 {
 		if (npf_on) {
 			request_page(address, page_content);
+			printk("[LRF] migration NETWORK request page: %lx\n", address);
+		} else {
+			printk("[LRF] migration LOCAL request page: %lx\n", address);
 		}
 
-		printk("[LRF] migration NETWORK request page: %lx\n", address);
 		return;
 }
 EXPORT_SYMBOL_GPL(__request_page);

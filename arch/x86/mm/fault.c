@@ -1243,8 +1243,8 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 	if ((address >> 44) == 0x6) {
 			//printk("[LRF-DD] page_fault invoked! address:[%lx]\n", address);
-			__request_page(address); 
 			stime = ktime_get(); 
+			__request_page(address); 
 	}
 #endif
 							
@@ -1538,10 +1538,10 @@ good_area:
 #ifdef CUCKOO_MIGRATION
 end:
 	    if ((address >> 44) == 0x6) {
-				printk("[LRF-DD] page_fault invoked! address:[%lx]\n", address);
+				//printk("[LRF-DD] page_fault invoked! address:[%lx]\n", address);
 				etime = ktime_get(); 
 				lrf_pf_time += ktime_to_ns(ktime_sub(etime, stime));
-				printk("[LRF] ID:[%d] pf cost: %lldns total time: %lldns.\n", pfid, ktime_to_ns(ktime_sub(etime, stime)), lrf_pf_time);
+				printk("[LRF] ID:[%d] pf cost: %lld ns total time: %lld ns.\n", pfid, ktime_to_ns(ktime_sub(etime, stime)), lrf_pf_time);
 				pfid++;
 		}
 
