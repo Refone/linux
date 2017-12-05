@@ -4,7 +4,7 @@
  *  Copyright (C) 2008-2009, Red Hat Inc., Ingo Molnar
  */
 
-#define CUCKOO_MIGRATION
+//#define CUCKOO_MIGRATION
 
 #include <linux/sched.h>		/* test_thread_flag(), ...	*/
 #include <linux/kdebug.h>		/* oops_begin/end, ...		*/
@@ -1221,7 +1221,9 @@ static inline bool smap_violation(int error_code, struct pt_regs *regs)
  * {,trace_}do_page_fault() have notrace on. Having this an actual function
  * guarantees there's a function trace entry.
  */
+#ifdef CUCKOO_MIGRATION
 extern void __request_page(unsigned long address);
+#endif
 static noinline void
 __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 		unsigned long address)

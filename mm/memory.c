@@ -38,7 +38,7 @@
  * Aug/Sep 2004 Changed to four level page tables (Andi Kleen)
  */
 
-#define LRF_MEMORY
+//#define LRF_MEMORY
 
 #include <linux/kernel_stat.h>
 #include <linux/mm.h>
@@ -97,6 +97,7 @@ EXPORT_SYMBOL(mem_map);
  * highstart_pfn must be the same; there must be no gap between ZONE_NORMAL
  * and ZONE_HIGHMEM.
  */
+
 void * high_memory;
 
 EXPORT_SYMBOL(high_memory);
@@ -751,14 +752,47 @@ static void print_bad_pte(struct vm_area_struct *vma, unsigned long addr,
 #else
 # define HAVE_PTE_SPECIAL 0
 #endif
+int lrf_memory_on = 0;
+EXPORT_SYMBOL_GPL(lrf_memory_on);
+int lrf_memory_print = 0;
+EXPORT_SYMBOL_GPL(lrf_memory_print);
+int lrf_memory_net = 1;
+EXPORT_SYMBOL_GPL(lrf_memory_net);
+
+extern void __request_page(unsigned long address);
 struct page *vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
 				pte_t pte)
 {
 	unsigned long pfn = pte_pfn(pte);
-
+	unsigned long pte_a;
+	unsigned int lrf_p=0;
 #ifdef LRF_MEMORY
-	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr);
+	//struct mm_struct *mm = current->mm;
+	//pgd_t pgd = ogd_dffset(mm, address);
+	//pmd_t pmd = ogd_dffset(mm, address);
+	//pte_t pte0 = ogd_dffset(mm, address);
 #endif
+
+//#ifdef LRF_MEMORY
+	if (lrf_memory_on) {
+
+			pte_a = ((unsigned long)(pte.pte)) & 0x60;
+			if(pte_a == 0) {
+					if (lrf_memory_print) {
+							printk(KERN_INFO "[LRF-MM] %s invoked start. addr:[%lx]. pte_t:[%lx].\n", __func__, addr, pte.pte);
+					}
+	
+					if (lrf_memory_net) {
+						__request_page(addr);
+					}				
+
+					lrf_p = 1;
+			} else {
+					lrf_p = 0;
+			}
+
+	}
+//#endif
 
 	if (HAVE_PTE_SPECIAL) {
 		if (likely(!pte_special(pte)))
@@ -802,6 +836,14 @@ check_pfn:
 	 * eg. VDSO mappings can cause them to exist.
 	 */
 out:
+	if (lrf_memory_on) {
+			if (lrf_p) {
+					if (lrf_memory_print) {
+							printk(KERN_INFO "[LRF-MM] %s invoked end. addr:[%lx]. pte_t:[%lx].\n", __func__, addr, pte.pte);
+					}
+			}
+	}
+
 	return pfn_to_page(pfn);
 }
 
@@ -810,10 +852,6 @@ struct page *vm_normal_page_pmd(struct vm_area_struct *vma, unsigned long addr,
 				pmd_t pmd)
 {
 	unsigned long pfn = pmd_pfn(pmd);
-
-#ifdef LRF_MEMORY
-	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr);
-#endif
 
 	/*
 	 * There is no pmd_special() but there may be special pmds, e.g.
@@ -845,6 +883,11 @@ struct page *vm_normal_page_pmd(struct vm_area_struct *vma, unsigned long addr,
 	 * eg. VDSO mappings can cause them to exist.
 	 */
 out:
+
+//#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr);
+//#endif
+
 	return pfn_to_page(pfn);
 }
 #endif
