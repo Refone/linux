@@ -18,8 +18,10 @@
 
 static int sock_connected = 0;
 EXPORT_SYMBOL_GPL(sock_connected);
-static int npf_on = 1;
-EXPORT_SYMBOL_GPL(npf_on);
+static int lrf_migration_on = 1;
+EXPORT_SYMBOL_GPL(lrf_migration_on);
+static int lrf_migration_print = 0;
+EXPORT_SYMBOL_GPL(lrf_migration_print);
 
 static struct sockaddr_in serv_addr;
 static struct socket *connect_sock = NULL;
@@ -104,7 +106,9 @@ int read_response(struct socket *sock, char *str)
 
 		set_fs(oldfs);
 
-		//printk("[CUCKOO-RECEIVER] %d bytes received.\n", len);
+		if (lrf_migration_print) {
+			printk("[CUCKOO-RECEIVER] %d bytes received.\n", len);
+		}
 
 		return len;
 }
@@ -205,18 +209,24 @@ MODULE_LICENSE("GPL");
 #ifndef NETWORK_PAGE_FAULT
 void __request_page(unsigned long address)
 {
-		//printk("[LRF] migration LOCAL request page: %lx\n", address);
+		if (lrf_migration_print) {
+			printk("[LRF] migration LOCAL request page: %lx\n", address);
+		}
 		return;
 }
 EXPORT_SYMBOL_GPL(__request_page);
 #else
 void __request_page(unsigned long address)
 {
-		if (npf_on) {
-			request_page(address, page_content);
-			//printk("[LRF] migration NETWORK request page: %lx\n", address);
+		if (lrf_migration_on) {
+				request_page(address, page_content);
+				if (lrf_migration_print) {
+						printk("[LRF] migration NETWORK request page: %lx\n", address);
+				}
 		} else {
-			//printk("[LRF] migration LOCAL request page: %lx\n", address);
+				if (lrf_migration_print) {
+						printk("[LRF] migration LOCAL request page: %lx\n", address);
+				}
 		}
 
 		return;
