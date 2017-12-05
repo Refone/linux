@@ -285,9 +285,15 @@ int walk_page_range(unsigned long start, unsigned long end,
 	return err;
 }
 
+static unsigned long count=0;
 int walk_page_vma(struct vm_area_struct *vma, struct mm_walk *walk)
 {
 	int err;
+
+	if (count%100) {
+		printk("[LRF-PF] %s invoked.\n", __func__);
+	}
+	count++;
 
 	if (!walk->mm)
 		return -EINVAL;

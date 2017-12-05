@@ -38,6 +38,8 @@
  * Aug/Sep 2004 Changed to four level page tables (Andi Kleen)
  */
 
+#define LRF_MEMORY
+
 #include <linux/kernel_stat.h>
 #include <linux/mm.h>
 #include <linux/hugetlb.h>
@@ -754,6 +756,10 @@ struct page *vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
 {
 	unsigned long pfn = pte_pfn(pte);
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr);
+#endif
+
 	if (HAVE_PTE_SPECIAL) {
 		if (likely(!pte_special(pte)))
 			goto check_pfn;
@@ -805,6 +811,10 @@ struct page *vm_normal_page_pmd(struct vm_area_struct *vma, unsigned long addr,
 {
 	unsigned long pfn = pmd_pfn(pmd);
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr);
+#endif
+
 	/*
 	 * There is no pmd_special() but there may be special pmds, e.g.
 	 * in a direct-access (dax) mapping, so let's just replicate the
@@ -853,6 +863,13 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	unsigned long vm_flags = vma->vm_flags;
 	pte_t pte = *src_pte;
 	struct page *page;
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr); 
+#endif
+
+//					(unsigned long)(*dst_pte),
+//					(unsigned long)(*src_pte));
 
 	/* pte contains position in swap or file, so copy. */
 	if (unlikely(!pte_present(pte))) {
@@ -932,6 +949,12 @@ static int copy_pte_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	int rss[NR_MM_COUNTERS];
 	swp_entry_t entry = (swp_entry_t){0};
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr); 
+#endif
+
+//					(unsigned long)(*dst_pmd),
+//					(unsigned long)(*src_pmd));
 again:
 	init_rss_vec(rss);
 
@@ -991,6 +1014,13 @@ static inline int copy_pmd_range(struct mm_struct *dst_mm, struct mm_struct *src
 	pmd_t *src_pmd, *dst_pmd;
 	unsigned long next;
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr); 
+#endif
+
+//					(unsigned long)(*dst_pud),
+//					(unsigned long)(*src_pud));
+
 	dst_pmd = pmd_alloc(dst_mm, dst_pud, addr);
 	if (!dst_pmd)
 		return -ENOMEM;
@@ -1024,6 +1054,13 @@ static inline int copy_pud_range(struct mm_struct *dst_mm, struct mm_struct *src
 	pud_t *src_pud, *dst_pud;
 	unsigned long next;
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked. addr:[%lx].\n", __func__, addr);
+#endif
+
+//					(unsigned long)(*dst_pgd),
+//					(unsigned long)(*src_pgd));
+
 	dst_pud = pud_alloc(dst_mm, dst_pgd, addr);
 	if (!dst_pud)
 		return -ENOMEM;
@@ -1050,6 +1087,11 @@ int copy_page_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	unsigned long mmun_end;		/* For mmu_notifiers */
 	bool is_cow;
 	int ret;
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
+
 
 	/*
 	 * Don't copy ptes where a page fault will fill them correctly.
@@ -1479,6 +1521,11 @@ static int insert_page(struct vm_area_struct *vma, unsigned long addr,
 	pte_t *pte;
 	spinlock_t *ptl;
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
+
+
 	retval = -EINVAL;
 	if (PageAnon(page))
 		goto out;
@@ -1600,6 +1647,10 @@ out:
 int vm_insert_pfn(struct vm_area_struct *vma, unsigned long addr,
 			unsigned long pfn)
 {
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
+
 	return vm_insert_pfn_prot(vma, addr, pfn, vma->vm_page_prot);
 }
 EXPORT_SYMBOL(vm_insert_pfn);
@@ -1993,6 +2044,10 @@ static inline int pte_unmap_same(struct mm_struct *mm, pmd_t *pmd,
 static inline void cow_user_page(struct page *dst, struct page *src, unsigned long va, struct vm_area_struct *vma)
 {
 	debug_dma_assert_idle(src);
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
 
 	/*
 	 * If the source page was a PFN mapping, we don't have
@@ -2527,6 +2582,11 @@ int do_swap_page(struct fault_env *fe, pte_t orig_pte)
 	int locked;
 	int exclusive = 0;
 	int ret = 0;
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
+
 
 	if (!pte_unmap_same(vma->vm_mm, fe->pmd, fe->pte, orig_pte))
 		goto out;
@@ -3177,6 +3237,10 @@ static int do_read_fault(struct fault_env *fe, pgoff_t pgoff)
 	struct page *fault_page;
 	int ret = 0;
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
+
 	/*
 	 * Let's call ->map_pages() first and use ->fault() as fallback
 	 * if page by the offset is not ready to be mapped (cold cache or
@@ -3208,6 +3272,10 @@ static int do_cow_fault(struct fault_env *fe, pgoff_t pgoff)
 	void *fault_entry;
 	struct mem_cgroup *memcg;
 	int ret;
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
 
 	if (unlikely(anon_vma_prepare(vma)))
 		return VM_FAULT_OOM;
@@ -3255,6 +3323,10 @@ static int do_shared_fault(struct fault_env *fe, pgoff_t pgoff)
 	struct address_space *mapping;
 	int dirtied = 0;
 	int ret, tmp;
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
 
 	ret = __do_fault(fe, pgoff, NULL, &fault_page, NULL);
 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY)))
@@ -3318,6 +3390,10 @@ static int do_fault(struct fault_env *fe)
 {
 	struct vm_area_struct *vma = fe->vma;
 	pgoff_t pgoff = linear_page_index(vma, fe->address);
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
 
 	/* The VMA was not fully populated on mmap() or missing VM_DONTEXPAND */
 	if (!vma->vm_ops->fault)
@@ -3483,6 +3559,10 @@ static int handle_pte_fault(struct fault_env *fe)
 {
 	pte_t entry;
 
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
+
 	if (unlikely(pmd_none(*fe->pmd))) {
 		/*
 		 * Leave __pte_alloc() until later: because vm_ops->fault may
@@ -3624,6 +3704,10 @@ int handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
 		unsigned int flags)
 {
 	int ret;
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked addr:[%lx].\n", __func__, address);
+#endif
 
 	__set_current_state(TASK_RUNNING);
 
@@ -4064,6 +4148,10 @@ static void copy_user_gigantic_page(struct page *dst, struct page *src,
 	int i;
 	struct page *dst_base = dst;
 	struct page *src_base = src;
+
+#ifdef LRF_MEMORY
+	printk(KERN_INFO "[LRF-MM] %s invoked.\n", __func__);
+#endif
 
 	for (i = 0; i < pages_per_huge_page; ) {
 		cond_resched();
